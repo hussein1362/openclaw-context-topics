@@ -38,9 +38,10 @@ topics/<name>/
 ```
 
 `topic.md` contains YAML code blocks for the always-loaded pin, file references,
-recent-memory rules, live probes, and metadata. Large files are deferred and
-read on demand. Sensitive-looking paths such as `.env`, private keys, tokens,
-and secrets are never inlined automatically.
+recent-memory rules, live probes, and metadata. Large non-sensitive files are
+deferred and read on demand. Sensitive-looking paths such as `.env`, private
+keys, tokens, and secrets are blocked from prompt injection and their absolute
+paths are not exposed in the bundle.
 
 ## Install From A Local Checkout
 

@@ -1,10 +1,11 @@
 // Plugin-owned Context Hat state.
 //
 // Keep this outside OpenClaw internals so the feature survives gateway updates.
-// The state is keyed by OpenClaw sessionKey and stores only the active topic
-// name plus timestamps.
+// The state is keyed by a one-way hash of the OpenClaw sessionKey and stores
+// only the active topic name plus timestamps.
 
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import os from "node:os";
 
@@ -71,7 +72,13 @@ export async function loadTopicState() {
  */
 export async function getActiveTopic(sessionKey) {
   const state = await loadTopicState();
-  return state.sessions[sessionKey];
+  const slot = getSessionSlot(state, sessionKey);
+  if (slot.legacyKey && slot.value) {
+    state.sessions[slot.key] = slot.value;
+    delete state.sessions[slot.legacyKey];
+    await saveTopicState(state);
+  }
+  return slot.value;
 }
 
 /**
@@ -81,14 +88,16 @@ export async function getActiveTopic(sessionKey) {
  */
 export async function setActiveTopic(sessionKey, topic) {
   const state = await loadTopicState();
+  const slot = getSessionSlot(state, sessionKey);
   const now = Date.now();
-  const previous = state.sessions[sessionKey];
+  const previous = slot.value;
   const next = {
     topic,
     setAt: previous?.topic === topic ? previous.setAt : now,
     updatedAt: now,
   };
-  state.sessions[sessionKey] = next;
+  state.sessions[slot.key] = next;
+  if (slot.legacyKey) delete state.sessions[slot.legacyKey];
   await saveTopicState(state);
   return next;
 }
@@ -99,8 +108,10 @@ export async function setActiveTopic(sessionKey, topic) {
  */
 export async function clearActiveTopic(sessionKey) {
   const state = await loadTopicState();
-  const existed = Boolean(state.sessions[sessionKey]);
-  delete state.sessions[sessionKey];
+  const slot = getSessionSlot(state, sessionKey);
+  const existed = Boolean(slot.value);
+  delete state.sessions[slot.key];
+  if (slot.legacyKey) delete state.sessions[slot.legacyKey];
   await saveTopicState(state);
   return existed;
 }
@@ -112,7 +123,8 @@ export async function clearActiveTopic(sessionKey) {
  */
 export async function requestTopicClose(sessionKey, params = {}) {
   const state = await loadTopicState();
-  const active = state.sessions[sessionKey];
+  const slot = getSessionSlot(state, sessionKey);
+  const active = slot.value;
   if (!active) return undefined;
   const next = {
     ...active,
@@ -122,7 +134,8 @@ export async function requestTopicClose(sessionKey, params = {}) {
     switchToTopic: params.switchToTopic,
     updatedAt: Date.now(),
   };
-  state.sessions[sessionKey] = next;
+  state.sessions[slot.key] = next;
+  if (slot.legacyKey) delete state.sessions[slot.legacyKey];
   await saveTopicState(state);
   return next;
 }
@@ -135,8 +148,9 @@ export async function requestTopicClose(sessionKey, params = {}) {
  */
 export async function requestTopicRefresh(sessionKey, topic, params = {}) {
   const state = await loadTopicState();
+  const slot = getSessionSlot(state, sessionKey);
   const now = Date.now();
-  const previous = state.sessions[sessionKey];
+  const previous = slot.value;
   const next = {
     topic,
     setAt: previous?.topic === topic ? previous.setAt : now,
@@ -144,7 +158,8 @@ export async function requestTopicRefresh(sessionKey, topic, params = {}) {
     refreshRequestedAt: now,
     refreshReason: params.reason,
   };
-  state.sessions[sessionKey] = next;
+  state.sessions[slot.key] = next;
+  if (slot.legacyKey) delete state.sessions[slot.legacyKey];
   await saveTopicState(state);
   return next;
 }
@@ -164,6 +179,27 @@ async function saveTopicState(state) {
  */
 function emptyState() {
   return { version: 1, sessions: {} };
+}
+
+/**
+ * @param {TopicStateFile} state
+ * @param {string} sessionKey
+ * @returns {{ key: string; value?: TopicSessionState; legacyKey?: string }}
+ */
+function getSessionSlot(state, sessionKey) {
+  const key = sessionStorageKey(sessionKey);
+  if (state.sessions[key]) return { key, value: state.sessions[key] };
+  if (state.sessions[sessionKey]) {
+    return { key, value: state.sessions[sessionKey], legacyKey: sessionKey };
+  }
+  return { key };
+}
+
+/**
+ * @param {string} sessionKey
+ */
+function sessionStorageKey(sessionKey) {
+  return `sha256:${createHash("sha256").update(sessionKey).digest("hex").slice(0, 32)}`;
 }
 
 /**

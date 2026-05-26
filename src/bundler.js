@@ -13,7 +13,8 @@
 // File access policy:
 //   - Manifests are author-trusted (you write them by hand). We don't gate paths.
 //   - We DO cap per-file bytes and total bundle bytes to avoid runaway context.
-//   - Sensitive-looking files are never inlined, even if explicitly listed.
+//   - Sensitive-looking files are never inlined, and their absolute paths are
+//     not exposed in the prompt bundle.
 //   - Read errors are reported inline as "[file unreadable: ...]" instead of
 //     failing the whole load.
 //
@@ -92,7 +93,7 @@ export async function buildTopicBundle(manifest, options = {}) {
   // would push past TOTAL_BUNDLE_MAX_BYTES. Anything not inlined gets listed
   // as a deferred reference with its path + size, so the agent knows where
   // to look without burning context on every byte upfront.
-  /** @type {{ rel: string; bytes: number; reason: string }[]} */
+  /** @type {{ rel: string; bytes: number; reason: string; sensitive?: boolean }[]} */
   const deferredFiles = [];
   if (manifest.files.length > 0) {
     parts.push(`\n## Files (${manifest.files.length})\n`);
@@ -118,6 +119,7 @@ export async function buildTopicBundle(manifest, options = {}) {
           rel,
           bytes: fileBytes,
           reason: sensitiveReason,
+          sensitive: true,
         });
         continue;
       }
@@ -158,17 +160,33 @@ export async function buildTopicBundle(manifest, options = {}) {
   }
 
   // --- Deferred files (paths only, agent reads on demand) ---
-  if (deferredFiles.length > 0) {
+  const blockedSensitiveFiles = deferredFiles.filter((f) => f.sensitive);
+  const readableDeferredFiles = deferredFiles.filter((f) => !f.sensitive);
+  if (readableDeferredFiles.length > 0) {
     parts.push(
-      `\n## Files NOT inlined (${deferredFiles.length}) — read on demand\n` +
+      `\n## Files NOT inlined (${readableDeferredFiles.length}) — read on demand\n` +
         `These were named by the manifest but did not fit in the bundle budget. ` +
         `Use the \`read\` tool with their absolute path when the user asks about them:\n\n`,
     );
-    for (const f of deferredFiles) {
+    for (const f of readableDeferredFiles) {
       const abs = resolveManifestPath(f.rel);
       const sizeStr =
         f.bytes > 0 ? `${(f.bytes / 1024).toFixed(1)} KB` : "unknown size";
       parts.push(`- \`${f.rel}\` (${sizeStr}) → \`${abs}\` — ${f.reason}\n`);
+    }
+  }
+
+  if (blockedSensitiveFiles.length > 0) {
+    parts.push(
+      `\n## Sensitive files blocked (${blockedSensitiveFiles.length})\n` +
+        `These manifest entries look like credentials or secrets. The topic plugin did not inline them, ` +
+        `did not reveal their absolute paths, and will not ask the agent to read them on demand. ` +
+        `Remove them from the topic manifest unless the user explicitly creates a safer, redacted reference.\n\n`,
+    );
+    for (const f of blockedSensitiveFiles) {
+      const sizeStr =
+        f.bytes > 0 ? `${(f.bytes / 1024).toFixed(1)} KB` : "unknown size";
+      parts.push(`- [redacted sensitive path] (${sizeStr}) — ${f.reason}\n`);
     }
   }
 
@@ -419,7 +437,7 @@ async function readFileForBundle(relLabel, absPath, perFileMaxBytes) {
 
 /**
  * Keep files that are likely to contain credentials out of automatic prompt
- * injection. The agent can still read them deliberately when the user asks.
+ * injection and out of deferred read instructions.
  *
  * @param {string} relLabel
  * @param {string} absPath

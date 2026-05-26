@@ -14,6 +14,7 @@
 //   - before_prompt_build injects the active hat context every turn.
 
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import os from "node:os";
 import { readFile, stat } from "node:fs/promises";
@@ -46,6 +47,13 @@ const SESSION_EXTENSION_SLOT_KEY = "contextTopic";
 
 /** @type {Map<string, { expiresAt: number; text: string; stats: import("./bundler.js").BundleStats; manifest: import("./manifest.js").TopicManifest }>} */
 const bundleCache = new Map();
+
+/**
+ * @param {string} sessionKey
+ */
+function redactSessionKey(sessionKey) {
+  return createHash("sha256").update(sessionKey).digest("hex").slice(0, 12);
+}
 
 /**
  * Format a one-line summary of bundle stats for the user-facing reply.
@@ -347,7 +355,7 @@ function renderRefreshInstructions(manifest, active) {
     `2. Remove stale TODOs when the room has enough information to replace them.\n` +
     `3. Preserve \`files:\`, \`recent_memory:\`, \`live_probes:\`, and \`memory_md_sections:\` unless there is a clear reason to change them.\n` +
     `4. Update \`last_review\` to today's date.\n` +
-    `5. Do not embed secrets or credentials. Secret locations are OK only when useful.\n` +
+    `5. Do not embed secrets, credentials, tokens, or secret file locations. Remove or redact them if found.\n` +
     `6. Briefly tell Hussein what changed.\n\n`
   );
 }
@@ -769,7 +777,7 @@ export default definePluginEntry({
         }
 
         api.logger?.info?.(
-          `context-topics: pinned topic=${sub} sessionKey=${ctx.sessionKey} bytes=${bundle.stats.bytesEmitted} files=${bundle.stats.filesIncluded} probes_deferred=${bundle.stats.probesDeferred} elapsed=${elapsed}ms`,
+          `context-topics: pinned topic=${sub} session=${redactSessionKey(ctx.sessionKey)} bytes=${bundle.stats.bytesEmitted} files=${bundle.stats.filesIncluded} probes_deferred=${bundle.stats.probesDeferred} elapsed=${elapsed}ms`,
         );
 
         return {
@@ -796,7 +804,7 @@ export default definePluginEntry({
         const bundle = await buildPinnedTopicContext(active.topic, TOPICS_DIR);
         if (!bundle) {
           api.logger?.warn?.(
-            `context-topics: active topic missing manifest topic=${active.topic} sessionKey=${ctx.sessionKey}`,
+            `context-topics: active topic missing manifest topic=${active.topic} session=${redactSessionKey(ctx.sessionKey)}`,
           );
           return;
         }

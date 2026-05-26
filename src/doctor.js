@@ -122,7 +122,7 @@ async function checkFiles(manifest, warnings, info) {
   for (const rel of manifest.files) {
     const abs = resolveManifestPath(rel);
     const sensitive = getSensitivePathReason(rel, abs);
-    if (sensitive) info.push(`${rel}: ${sensitive}`);
+    if (sensitive) info.push(`[redacted sensitive path]: ${sensitive}`);
 
     try {
       const st = await stat(abs);

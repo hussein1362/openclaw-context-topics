@@ -2,7 +2,7 @@
   "id": "context-topics",
   "name": "Context Topics",
   "description": "Context Hat project rooms: list, new, load/switch, status, panel, close, refresh, doctor, clear.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "activation": {
     "onStartup": true,
     "onCommands": ["topic"],
