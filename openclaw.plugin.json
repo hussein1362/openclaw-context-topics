@@ -1,8 +1,8 @@
 {
   "id": "context-topics",
   "name": "Context Topics",
-  "description": "Context Hat project rooms: list, new, load/switch, status, panel, close, refresh, doctor, clear.",
-  "version": "0.1.1",
+  "description": "Context Hat project rooms: list, new, capture, load/switch, status, panel, close, refresh, doctor, clear.",
+  "version": "0.1.2",
   "activation": {
     "onStartup": true,
     "onCommands": ["topic"],
@@ -11,7 +11,7 @@
   "commandAliases": [
     {
       "name": "topic",
-      "description": "Context Hat project rooms. Commands: /topic list, /topic new <name>, /topic <name>, /topic status, /topic panel [name], /topic close, /topic refresh, /topic doctor, /topic clear."
+      "description": "Context Hat project rooms. Commands: /topic list, /topic new <name>, /topic capture <name>, /topic <name>, /topic status, /topic panel [name], /topic close, /topic refresh, /topic doctor, /topic clear."
     }
   ],
   "configSchema": {

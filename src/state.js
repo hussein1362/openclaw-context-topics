@@ -23,6 +23,9 @@ const STATE_FILE = path.join(STATE_DIR, "context-topics.json");
  * @property {string} [switchToTopic]
  * @property {number} [refreshRequestedAt]
  * @property {string} [refreshReason]
+ * @property {number} [captureRequestedAt]
+ * @property {string} [captureReason]
+ * @property {string} [captureSessionFile]
  */
 
 /**
@@ -157,6 +160,31 @@ export async function requestTopicRefresh(sessionKey, topic, params = {}) {
     updatedAt: now,
     refreshRequestedAt: now,
     refreshReason: params.reason,
+  };
+  state.sessions[slot.key] = next;
+  if (slot.legacyKey) delete state.sessions[slot.legacyKey];
+  await saveTopicState(state);
+  return next;
+}
+
+/**
+ * @param {string} sessionKey
+ * @param {string} topic
+ * @param {{ reason?: string; sessionFile?: string }} params
+ * @returns {Promise<TopicSessionState>}
+ */
+export async function requestTopicCapture(sessionKey, topic, params = {}) {
+  const state = await loadTopicState();
+  const slot = getSessionSlot(state, sessionKey);
+  const now = Date.now();
+  const previous = slot.value;
+  const next = {
+    topic,
+    setAt: previous?.topic === topic ? previous.setAt : now,
+    updatedAt: now,
+    captureRequestedAt: now,
+    captureReason: params.reason,
+    captureSessionFile: params.sessionFile,
   };
   state.sessions[slot.key] = next;
   if (slot.legacyKey) delete state.sessions[slot.legacyKey];

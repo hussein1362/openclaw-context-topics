@@ -4,6 +4,7 @@
 //   - /topic            -> usage
 //   - /topic list       -> enumerate ~/openclaw-soul/topics
 //   - /topic new <name> -> create a folder-backed topic room
+//   - /topic capture <name> -> create a topic from the current session
 //   - /topic <name>     -> parse manifest, store active hat for this session
 //   - /topic status     -> show current hat
 //   - /topic panel      -> show a chat-stream topic panel
@@ -25,6 +26,7 @@ import { doctorTopic, formatDoctorReport } from "./doctor.js";
 import {
   clearActiveTopic,
   getActiveTopic,
+  requestTopicCapture,
   requestTopicClose,
   requestTopicRefresh,
   setActiveTopic,
@@ -41,7 +43,7 @@ const PIN_TOTAL_MAX_BYTES = 12_000;
 const PIN_PER_FILE_MAX_BYTES = 8_000;
 const CACHE_TTL_MS = 15_000;
 const COMMAND_PICKER_DESCRIPTION =
-  "Context Hat project rooms. Commands: /topic list (topics); /topic new <name> (create); /topic <name> (switch/load); /topic status (active); /topic panel [name] (chat panel); /topic close [reason] (cleanup); /topic refresh [name] (update pin); /topic doctor [name] (validate); /topic clear (off).";
+  "Context Hat project rooms. Commands: /topic list (topics); /topic new <name> (create blank); /topic capture <name> (capture current chat); /topic <name> (switch/load); /topic status (active); /topic panel [name] (chat panel); /topic close [reason] (cleanup); /topic refresh [name] (update pin); /topic doctor [name] (validate); /topic clear (off).";
 const SESSION_EXTENSION_NAMESPACE = "active-topic";
 const SESSION_EXTENSION_SLOT_KEY = "contextTopic";
 
@@ -152,6 +154,7 @@ function describeLifecycle(topic, active) {
     return `closing, then switching to \`${active.switchToTopic}\``;
   }
   if (active.closeRequestedAt) return "closing on the next agent turn";
+  if (active.captureRequestedAt) return "capture queued for the next agent turn";
   if (active.refreshRequestedAt) return "refresh queued for the next agent turn";
   return "active in this session";
 }
@@ -360,11 +363,41 @@ function renderRefreshInstructions(manifest, active) {
   );
 }
 
+/**
+ * @param {import("./manifest.js").TopicManifest} manifest
+ * @param {import("./state.js").TopicSessionState} active
+ */
+function renderCaptureInstructions(manifest, active) {
+  const reason = active.captureReason || "retroactive topic capture";
+  const sessionFile = active.captureSessionFile || "(not provided by host)";
+  return (
+    `# Context Hat Capture Request: ${manifest.name}\n` +
+    `The user invoked /topic capture. They had been working without a topic and now want this current conversation to become a durable topic room.\n\n` +
+    `Capture reason: ${reason}\n` +
+    `Session file, if available: ${sessionFile}\n\n` +
+    `Create a clean first pass of topic memory from the current conversation:\n` +
+    `- Manifest/pin: \`${manifest.sourcePath}\`\n` +
+    `- Topic memory: \`${manifest.memoryPath}\`\n` +
+    `- Topic decisions: \`${manifest.decisionsPath}\`\n` +
+    `- Topic artifacts: \`${manifest.artifactsDir}\`\n` +
+    `- Artifact index: \`${manifest.artifactIndexPath}\`\n\n` +
+    `Capture rules:\n` +
+    `1. Read the current conversation context you can see. If the host provides a session file, read it only when needed for accurate capture.\n` +
+    `2. Replace starter TODOs in \`topic.md\` with a useful pin: summary, current_state, operating_rules, settled_decisions, open_work, and avoid.\n` +
+    `3. Append a concise initial session summary to \`memory.md\` with the date and why this topic exists.\n` +
+    `4. Append durable decisions to \`decisions.md\` only when actual decisions were made.\n` +
+    `5. Update \`artifacts/index.md\` for files, docs, links, or generated artifacts that matter to this topic.\n` +
+    `6. Do not embed secrets, credentials, tokens, or secret file locations. Remove or redact them if found.\n` +
+    `7. Keep global MEMORY.md for cross-topic durable truths only.\n` +
+    `8. After writing files, briefly tell Hussein what you captured and what remains open.\n\n`
+  );
+}
+
 export default definePluginEntry({
   id: "context-topics",
   name: "Context Topics",
   description:
-    "Context Hat project rooms: list, new, load/switch, status, panel, close, refresh, doctor, clear.",
+    "Context Hat project rooms: list, new, capture, load/switch, status, panel, close, refresh, doctor, clear.",
   register(api) {
     registerTopicSessionExtension(api);
 
@@ -388,6 +421,7 @@ export default definePluginEntry({
               "**Context Hat Commands**\n\n" +
               "- `/topic list` — show available topic rooms and legacy topics.\n" +
               "- `/topic new <name>` — create a folder-backed topic room and put that hat on. Alias: `/topic create <name>`.\n" +
+              "- `/topic capture <name>` — create a topic room from the current no-hat conversation and ask the agent to fill memory, decisions, artifacts, and the initial pin.\n" +
               "- `/topic <name>` — put an existing hat on. If another hat is active, close it first and switch after cleanup.\n" +
               "- `/topic status` — show the active hat. Alias: `/topic current`.\n" +
               "- `/topic panel [name]` — show a chat-stream topic panel with room, memory, decisions, artifacts, and pin shape.\n" +
@@ -397,6 +431,7 @@ export default definePluginEntry({
               "- `/topic clear` — take the current hat off without cleanup. Alias: `/topic off`.\n\n" +
               "Examples:\n" +
               "- `/topic new amber-phase-2`\n" +
+              "- `/topic capture surprise-project`\n" +
               "- `/topic robot-amber`\n" +
               "- `/topic panel robot-amber`\n" +
               "- `/topic close switching to NSN work`\n" +
@@ -496,6 +531,82 @@ export default definePluginEntry({
                 bundleStats: bundle.stats,
                 detail: "full",
               })),
+          };
+        }
+
+        if (sub === "capture") {
+          const rawName = args.slice(sub.length).trim();
+          const name = normalizeTopicName(rawName);
+          if (!rawName || !name || !isValidTopicName(name)) {
+            return {
+              text:
+                "Give the captured topic a short name: `/topic capture newproject`. " +
+                "Use letters, numbers, dashes, or underscores.",
+            };
+          }
+          if (!ctx.sessionKey) {
+            return {
+              text:
+                "Can't capture this conversation right now — this command needs an active session, and the host didn't provide a sessionKey.",
+            };
+          }
+
+          const active = await getActiveTopic(ctx.sessionKey);
+          if (active?.topic && active.topic !== name && !active.closeRequestedAt) {
+            return {
+              text:
+                `A Context Hat is already active: **${active.topic}**.\n\n` +
+                "Use `/topic close` to clean up that topic first, or `/topic clear` if you want to remove it without cleanup. Then run `/topic capture <name>`.",
+            };
+          }
+
+          let room;
+          try {
+            room = await createTopicRoom(TOPICS_DIR, rawName);
+          } catch (err) {
+            api.logger?.error?.(
+              `context-topics: failed to capture topic room raw=${rawName}: ${(err && err.message) || err}`,
+            );
+            return {
+              text: `Failed to create captured topic room \`${name || rawName}\`: ${(err && err.message) || err}`,
+            };
+          }
+
+          const manifest = await loadManifest(room.name, TOPICS_DIR);
+          if (!manifest) {
+            return {
+              text:
+                `Topic room \`${room.name}\` was created, but I couldn't load its manifest at \`${room.topicPath}\`.`,
+            };
+          }
+
+          const bundle = await buildTopicBundle(manifest, {
+            mode: "pin",
+            totalMaxBytes: PIN_TOTAL_MAX_BYTES,
+            perFileMaxBytes: PIN_PER_FILE_MAX_BYTES,
+          });
+          bundleCache.set(room.name, {
+            expiresAt: Date.now() + CACHE_TTL_MS,
+            text: bundle.text,
+            stats: bundle.stats,
+            manifest,
+          });
+
+          const next = await requestTopicCapture(ctx.sessionKey, room.name, {
+            reason: `capturing current session into ${room.name}`,
+            sessionFile: /** @type {any} */ (ctx).sessionFile,
+          });
+
+          return {
+            text:
+              `${room.created ? "Created" : "Opened"} topic room **${room.name}** and queued a retroactive capture.\n\n` +
+              (await renderTopicCard({
+                manifest,
+                active: next,
+                bundleStats: bundle.stats,
+                detail: "full",
+              })),
+            continueAgent: true,
           };
         }
 
@@ -812,7 +923,10 @@ export default definePluginEntry({
         const closeout = active.closeRequestedAt && bundle.manifest
           ? renderCloseoutInstructions(bundle.manifest, active)
           : "";
-        const refresh = !closeout && active.refreshRequestedAt && bundle.manifest
+        const capture = !closeout && active.captureRequestedAt && bundle.manifest
+          ? renderCaptureInstructions(bundle.manifest, active)
+          : "";
+        const refresh = !closeout && !capture && active.refreshRequestedAt && bundle.manifest
           ? renderRefreshInstructions(bundle.manifest, active)
           : "";
 
@@ -822,6 +936,8 @@ export default definePluginEntry({
           } else {
             await clearActiveTopic(ctx.sessionKey);
           }
+        } else if (capture) {
+          await setActiveTopic(ctx.sessionKey, active.topic);
         } else if (refresh) {
           await setActiveTopic(ctx.sessionKey, active.topic);
         }
@@ -832,6 +948,7 @@ export default definePluginEntry({
             `This session has an active Context Hat. Use the following curated bundle as working context. ` +
             `The user can switch hats with /topic <name>, close this with /topic close, or clear this with /topic clear.\n\n` +
             closeout +
+            capture +
             refresh +
             bundle.text,
         };

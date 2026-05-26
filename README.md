@@ -11,6 +11,9 @@ itself.
 
 - `/topic list` shows available topic rooms.
 - `/topic new <name>` creates a new topic room and activates it.
+- `/topic capture <name>` turns the current no-hat conversation into a new
+  topic room, then asks the agent to fill the initial pin, memory, decisions,
+  and artifact index from the current session.
 - `/topic <name>` loads an existing topic into the current session.
 - `/topic status` shows the active topic.
 - `/topic panel [name]` renders a chat-stream topic panel.
@@ -55,6 +58,26 @@ Then type:
 ```text
 /topic
 ```
+
+### Retroactive Capture
+
+Use capture when you have been working normally and realize the conversation
+should become its own topic:
+
+```text
+/topic capture my-new-project
+```
+
+The plugin creates `topics/my-new-project/`, activates that hat, and queues a
+one-time capture request. On the next agent turn, the agent should update:
+
+- `topic.md` with a useful starter pin
+- `memory.md` with a concise session summary
+- `decisions.md` with durable decisions only
+- `artifacts/index.md` with important files, docs, links, or generated artifacts
+
+`/topic capture` is meant for sessions with no active hat. If another hat is
+already active, close or clear it first so topic memory does not get mixed.
 
 ## Upstream Safety
 
