@@ -331,10 +331,38 @@ function renderCloseoutInstructions(manifest, active) {
     `4. Keep global MEMORY.md for cross-topic durable truths only.\n` +
     `5. Do not copy secrets, credentials, tokens, or irrelevant personal data into topic files.\n` +
     `6. After writing files, briefly tell Hussein what you updated.\n` +
+    `7. This is the final turn for this hat. Do not tell Hussein to run /topic clear after closeout; the plugin clears the hat automatically for following turns.\n` +
     (active.switchToTopic
-      ? `7. After this cleanup turn, the plugin will activate topic "${active.switchToTopic}" for the next turn. Do not start work in that next topic yet.\n`
+      ? `8. After this cleanup turn, the plugin will activate topic "${active.switchToTopic}" for the next turn. Do not start work in that next topic yet.\n`
       : "") +
     `\n`
+  );
+}
+
+/**
+ * @param {string} topic
+ * @param {import("./state.js").TopicSessionState} active
+ */
+function renderContextHatPrelude(topic, active) {
+  if (active.closeRequestedAt) {
+    if (active.switchToTopic) {
+      return (
+        `# Closing Context Hat: ${topic}\n` +
+        `This is a one-time closeout turn. The plugin is closing "${topic}" and will switch to "${active.switchToTopic}" for the following turn. ` +
+        `Do not tell the user to run /topic clear.\n\n`
+      );
+    }
+    return (
+      `# Closing Context Hat: ${topic}\n` +
+      `This is a one-time closeout turn. The plugin has removed "${topic}" from active session state for following turns. ` +
+      `Do not tell the user to run /topic clear.\n\n`
+    );
+  }
+
+  return (
+    `# Active Context Hat: ${topic}\n` +
+    `This session has an active Context Hat. Use the following curated bundle as working context. ` +
+    `The user can switch hats with /topic <name>, close this with /topic close, or clear this with /topic clear.\n\n`
   );
 }
 
@@ -944,9 +972,7 @@ export default definePluginEntry({
 
         return {
           prependContext:
-            `# Active Context Hat: ${active.topic}\n` +
-            `This session has an active Context Hat. Use the following curated bundle as working context. ` +
-            `The user can switch hats with /topic <name>, close this with /topic close, or clear this with /topic clear.\n\n` +
+            renderContextHatPrelude(active.topic, active) +
             closeout +
             capture +
             refresh +
