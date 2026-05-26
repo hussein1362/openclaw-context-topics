@@ -1,0 +1,24 @@
+{
+  "name": "openclaw-context-topics",
+  "version": "0.1.0",
+  "description": "Change-hats plugin: load curated context bundles into the current OpenClaw session via /topic <name>",
+  "type": "module",
+  "main": "./src/index.js",
+  "files": [
+    "openclaw.plugin.json",
+    "src"
+  ],
+  "openclaw": {
+    "extensions": ["./src/index.js"],
+    "compat": {
+      "pluginApi": ">=2026.5.20",
+      "minGatewayVersion": "2026.5.20"
+    },
+    "build": {
+      "openclawVersion": "2026.5.20",
+      "pluginSdkVersion": "2026.5.20"
+    }
+  },
+  "author": "Hussein + Noura",
+  "license": "MIT-0"
+}
