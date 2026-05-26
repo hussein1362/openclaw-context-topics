@@ -2,7 +2,7 @@
   "id": "context-topics",
   "name": "Context Topics",
   "description": "Project continuity for one agent: switch, capture, and close topic hats with their own memory, decisions, and artifacts.",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "activation": {
     "onStartup": true,
     "onCommands": ["topic"],

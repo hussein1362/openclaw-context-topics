@@ -14,7 +14,7 @@
 //
 // Paths in `files:` may be:
 //   - absolute (start with /)
-//   - relative to ~/openclaw-soul (e.g. "projects/amber-robot/PERSONALITY.md")
+//   - relative to ~/openclaw-soul (e.g. "projects/product-launch/brief.md")
 //   - prefixed with ~/  (expanded to $HOME)
 
 import { readFile } from "node:fs/promises";

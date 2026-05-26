@@ -1,6 +1,6 @@
 {
   "name": "openclaw-context-topics",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Project continuity for one OpenClaw agent: switch, capture, and close topic hats with their own memory, decisions, and artifacts.",
   "type": "module",
   "main": "./src/index.js",
@@ -19,6 +19,6 @@
       "pluginSdkVersion": "2026.5.20"
     }
   },
-  "author": "Hussein + Noura",
+  "author": "OpenClaw community",
   "license": "MIT-0"
 }

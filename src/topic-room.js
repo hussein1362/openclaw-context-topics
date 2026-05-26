@@ -225,8 +225,8 @@ memory_md_sections: []
 
 \`\`\`yaml
 schema: openclaw-topic.v1
-hat_owner: hussein
-hat_voice: noura
+hat_owner: user
+hat_voice: agent
 last_review: ${today}
 \`\`\`
 `;
@@ -246,7 +246,7 @@ Use this file for durable project-room context:
 - important discussion summaries
 - constraints learned
 - open questions
-- things Hussein explicitly wants remembered for this topic
+- things the user explicitly wants remembered for this topic
 
 ## Log
 `;

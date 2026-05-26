@@ -3,11 +3,11 @@
 Context Topics lets one OpenClaw agent carry many lives without mixing them
 together.
 
-Put on the Amber hat, and the agent remembers the robot, the family-facing
-rules, the source-of-truth files, and the decisions already made. Switch to a
-client, research thread, home project, or half-started idea, and that work gets
-its own room too: a working pin, memory, decisions, artifacts, notes, and
-closeout ritual.
+Put on a product-launch hat, and the agent remembers the launch plan, the
+source-of-truth files, the decisions already made, and what should not be
+re-litigated. Switch to a client engagement, research thread, open-source
+project, or half-started idea, and that work gets its own room too: a working
+pin, memory, decisions, artifacts, notes, and closeout ritual.
 
 It is meant to feel like project continuity, not a prompt trick. You can start
 a topic intentionally with `/topic new`, retroactively capture a conversation

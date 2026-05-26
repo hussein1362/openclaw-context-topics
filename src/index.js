@@ -330,8 +330,8 @@ function renderCloseoutInstructions(manifest, active) {
     `3. Create or update the artifact index with artifacts that were created, changed, or referenced.\n` +
     `4. Keep global MEMORY.md for cross-topic durable truths only.\n` +
     `5. Do not copy secrets, credentials, tokens, or irrelevant personal data into topic files.\n` +
-    `6. After writing files, briefly tell Hussein what you updated.\n` +
-    `7. This is the final turn for this hat. Do not tell Hussein to run /topic clear after closeout; the plugin clears the hat automatically for following turns.\n` +
+    `6. After writing files, briefly tell the user what you updated.\n` +
+    `7. This is the final turn for this hat. Do not tell the user to run /topic clear after closeout; the plugin clears the hat automatically for following turns.\n` +
     (active.switchToTopic
       ? `8. After this cleanup turn, the plugin will activate topic "${active.switchToTopic}" for the next turn. Do not start work in that next topic yet.\n`
       : "") +
@@ -387,7 +387,7 @@ function renderRefreshInstructions(manifest, active) {
     `3. Preserve \`files:\`, \`recent_memory:\`, \`live_probes:\`, and \`memory_md_sections:\` unless there is a clear reason to change them.\n` +
     `4. Update \`last_review\` to today's date.\n` +
     `5. Do not embed secrets, credentials, tokens, or secret file locations. Remove or redact them if found.\n` +
-    `6. Briefly tell Hussein what changed.\n\n`
+    `6. Briefly tell the user what changed.\n\n`
   );
 }
 
@@ -417,7 +417,7 @@ function renderCaptureInstructions(manifest, active) {
     `5. Update \`artifacts/index.md\` for files, docs, links, or generated artifacts that matter to this topic.\n` +
     `6. Do not embed secrets, credentials, tokens, or secret file locations. Remove or redact them if found.\n` +
     `7. Keep global MEMORY.md for cross-topic durable truths only.\n` +
-    `8. After writing files, briefly tell Hussein what you captured and what remains open.\n\n`
+    `8. After writing files, briefly tell the user what you captured and what remains open.\n\n`
   );
 }
 
@@ -458,12 +458,12 @@ export default definePluginEntry({
               "- `/topic doctor [name]` — validate topic structure, pin quality, files, probes, and review date. Alias: `/topic check [name]`.\n" +
               "- `/topic clear` — take the current hat off without cleanup. Alias: `/topic off`.\n\n" +
               "Examples:\n" +
-              "- `/topic new amber-phase-2`\n" +
+              "- `/topic new product-launch`\n" +
               "- `/topic capture surprise-project`\n" +
-              "- `/topic robot-amber`\n" +
-              "- `/topic panel robot-amber`\n" +
+              "- `/topic product-launch`\n" +
+              "- `/topic panel product-launch`\n" +
               "- `/topic close switching to NSN work`\n" +
-              "- `/topic doctor robot-amber`\n\n" +
+              "- `/topic doctor product-launch`\n\n" +
               `Topics live in \`${TOPICS_DIR}\`. New topics use \`<name>/topic.md\` plus memory, decisions, notes, and artifacts.`,
           };
         }
