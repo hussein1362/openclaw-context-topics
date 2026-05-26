@@ -1,7 +1,7 @@
 {
   "name": "openclaw-context-topics",
-  "version": "0.1.3",
-  "description": "Change-hats plugin: load curated context bundles into the current OpenClaw session via /topic <name>",
+  "version": "0.1.4",
+  "description": "Project continuity for one OpenClaw agent: switch, capture, and close topic hats with their own memory, decisions, and artifacts.",
   "type": "module",
   "main": "./src/index.js",
   "files": [

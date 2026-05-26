@@ -1,11 +1,20 @@
 # Context Topics
 
-Context Topics is an OpenClaw plugin that gives one agent many project "hats".
+Context Topics lets one OpenClaw agent carry many lives without mixing them
+together.
 
-It adds a `/topic` command that loads a curated, folder-backed context room into
-the current OpenClaw session. Each topic can keep its own working pin, memory,
-decisions, artifacts, notes, and validation state without patching OpenClaw
-itself.
+Put on the Amber hat, and the agent remembers the robot, the family-facing
+rules, the source-of-truth files, and the decisions already made. Switch to a
+client, research thread, home project, or half-started idea, and that work gets
+its own room too: a working pin, memory, decisions, artifacts, notes, and
+closeout ritual.
+
+It is meant to feel like project continuity, not a prompt trick. You can start
+a topic intentionally with `/topic new`, retroactively capture a conversation
+with `/topic capture`, close a topic when the session is done, and come back
+later with the context still waiting. All of it lives in simple files under
+`~/openclaw-soul/topics/`, using OpenClaw's plugin hooks instead of patching
+the gateway or drifting away from upstream updates.
 
 ## What It Does
 
