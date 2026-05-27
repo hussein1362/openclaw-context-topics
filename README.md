@@ -1,42 +1,124 @@
 # Context Topics
 
-Context Topics lets one OpenClaw agent carry many lives without mixing them
-together.
+Project continuity for one OpenClaw agent.
 
-Put on a product-launch hat, and the agent remembers the launch plan, the
-source-of-truth files, the decisions already made, and what should not be
-re-litigated. Switch to a client engagement, research thread, open-source
-project, or half-started idea, and that work gets its own room too: a working
-pin, memory, decisions, artifacts, notes, and closeout ritual.
+Context Topics lets one agent move between different bodies of work without
+mixing them together. Put on a product-launch hat, and the agent remembers the
+launch plan, source-of-truth files, decisions already made, and what should not
+be re-litigated. Switch to a client engagement, research thread, open-source
+project, or half-started idea, and that work gets its own room too.
 
-It is meant to feel like project continuity, not a prompt trick. You can start
-a topic intentionally with `/topic new`, retroactively capture a conversation
-with `/topic capture`, close a topic when the session is done, and come back
-later with the context still waiting. All of it lives in simple files under
-`~/openclaw-soul/topics/`, using OpenClaw's plugin hooks instead of patching
-the gateway or drifting away from upstream updates.
+It is meant to feel like project memory, not a prompt trick. You can start a
+topic intentionally, capture a conversation after you realize it matters, close
+the topic with durable notes, and come back later with the context still
+waiting.
 
-## What It Does
+Context Topics stores everything as plain files under
+`~/openclaw-soul/topics/` and uses OpenClaw's public plugin hooks. No gateway
+fork. No Control UI patch. No drifting away from upstream updates.
 
-- `/topic list` shows available topic rooms.
-- `/topic new <name>` creates a new topic room and activates it.
-- `/topic capture <name>` turns the current no-hat conversation into a new
-  topic room, then asks the agent to fill the initial pin, memory, decisions,
-  and artifact index from the current session.
-- `/topic <name>` loads an existing topic into the current session.
-- `/topic status` shows the active topic.
-- `/topic panel [name]` renders a chat-stream topic panel.
-- `/topic close [reason]` asks the agent to close out topic memory, decisions,
-  and artifacts.
-- `/topic refresh [name]` asks the agent to refresh the topic pin from room
-  state.
-- `/topic doctor [name]` validates structure, pin quality, files, probes, and
-  review age.
-- `/topic clear` removes the active hat without cleanup.
+## Why This Exists
+
+One good agent can help with many things, but conversations blur together.
+Project A has different rules than Project B. Decisions made last week get
+forgotten. A useful chat becomes hard to resume because it was never promoted
+into a durable workspace.
+
+Context Topics gives each project a small, file-backed memory room:
+
+- a working pin for what the agent should know immediately
+- topic-local memory
+- decisions
+- artifact index
+- notes
+- validation through `/topic doctor`
+
+The goal is simple: one agent, many hats, each with its own continuity.
+
+## Quick Start
+
+Install from ClawHub:
+
+```bash
+openclaw plugins install clawhub:openclaw-context-topics
+openclaw gateway restart
+```
+
+Then open a chat and type:
+
+```text
+/topic
+```
+
+Create a new topic:
+
+```text
+/topic new product-launch
+```
+
+Load it later:
+
+```text
+/topic product-launch
+```
+
+Close it when the work is done:
+
+```text
+/topic close
+```
+
+## The One-Minute Demo
+
+You are chatting normally and realize the conversation should become a project:
+
+```text
+/topic capture whatsapp-research
+```
+
+Context Topics creates:
+
+```text
+~/openclaw-soul/topics/whatsapp-research/
+  topic.md
+  memory.md
+  decisions.md
+  artifacts/
+    README.md
+    index.md
+  notes/
+```
+
+On the next agent turn, the agent is asked to fill the starter pin, memory,
+decisions, and artifact index from the current conversation.
+
+Later:
+
+```text
+/topic whatsapp-research
+```
+
+The agent gets the topic room back as working context.
+
+## Commands
+
+| Command | What it does |
+| --- | --- |
+| `/topic` | Show command help. |
+| `/topic list` | Show available topic rooms. |
+| `/topic new <name>` | Create a folder-backed topic room and activate it. |
+| `/topic capture <name>` | Turn the current no-hat conversation into a new topic room. |
+| `/topic <name>` | Load an existing topic into the current session. |
+| `/topic status` | Show the active topic. |
+| `/topic panel [name]` | Render a chat-stream topic panel. |
+| `/topic close [reason]` | Run one final cleanup turn, update topic files, then clear the hat. |
+| `/topic refresh [name]` | Ask the agent to refresh `topic.md` from topic memory and decisions. |
+| `/topic doctor [name]` | Validate structure, pin quality, file references, probes, and review date. |
+| `/topic clear` | Take the current hat off without cleanup. |
 
 ## Topic Room Shape
 
-New topics use this folder shape under `~/openclaw-soul/topics/`:
+New topics use this folder shape:
 
 ```text
 topics/<name>/
@@ -50,43 +132,46 @@ topics/<name>/
 ```
 
 `topic.md` contains YAML code blocks for the always-loaded pin, file references,
-recent-memory rules, live probes, and metadata. Large non-sensitive files are
-deferred and read on demand. Sensitive-looking paths such as `.env`, private
-keys, tokens, and secrets are blocked from prompt injection and their absolute
-paths are not exposed in the bundle.
+recent-memory rules, live probes, and metadata.
 
-## Install From A Local Checkout
+Topic-local files are intentionally plain Markdown so they can be read, edited,
+backed up, diffed, and committed like any other project artifact.
 
-```bash
-openclaw plugins install /path/to/context-topics
-openclaw gateway restart
+## Example Pin
+
+```yaml
+pin:
+  title: "Product Launch"
+  summary: "Launch planning for the next release."
+  current_state:
+    - "Launch date is not final."
+    - "Pricing copy is still under review."
+  operating_rules:
+    - "Keep recommendations practical and release-oriented."
+    - "Do not reopen settled positioning unless new evidence appears."
+  settled_decisions:
+    - "Use the existing landing page instead of creating a new microsite."
+  open_work:
+    - "Draft launch checklist."
+    - "Confirm owner for customer announcement."
+  avoid:
+    - "Do not suggest paid ads until budget is approved."
 ```
 
-Then type:
+## Privacy And Safety
 
-```text
-/topic
-```
+Context Topics is local-first.
 
-### Retroactive Capture
+- Topic rooms live under `~/openclaw-soul/topics/`.
+- Plugin session state lives under `~/openclaw-soul/state/`.
+- The plugin does not execute shell commands.
+- Live probes are listed for the agent to run manually when needed.
+- Sensitive-looking files are not inlined.
+- Sensitive-looking absolute paths are redacted from prompt bundles.
+- Session identifiers are hashed before persistence or logging.
 
-Use capture when you have been working normally and realize the conversation
-should become its own topic:
-
-```text
-/topic capture my-new-project
-```
-
-The plugin creates `topics/my-new-project/`, activates that hat, and queues a
-one-time capture request. On the next agent turn, the agent should update:
-
-- `topic.md` with a useful starter pin
-- `memory.md` with a concise session summary
-- `decisions.md` with durable decisions only
-- `artifacts/index.md` with important files, docs, links, or generated artifacts
-
-`/topic capture` is meant for sessions with no active hat. If another hat is
-already active, close or clear it first so topic memory does not get mixed.
+You still control what goes into each topic. Do not put secrets, tokens,
+private keys, or credential material in topic memory.
 
 ## Upstream Safety
 
@@ -97,6 +182,35 @@ This plugin uses OpenClaw's public plugin SDK:
 - `registerSessionExtension` as an optional session metadata probe
 
 It does not patch the gateway or Control UI bundle.
+
+## Feedback Wanted
+
+This plugin is young. The most useful feedback is specific:
+
+- Did `/topic capture` feel natural?
+- Did `/topic close` write the right amount of memory?
+- Did the topic pin help on the next session?
+- Did anything feel too heavy, too magical, or too manual?
+- What would make this safer for a team or shared machine?
+
+Please open an issue with the command you ran, what you expected, what happened,
+and whether the topic files ended up useful.
+
+## Roadmap
+
+Ideas being considered:
+
+- richer file tiers and source-of-truth references
+- better artifact indexing
+- optional team/shared-topic conventions
+- import/export of topic rooms
+- stronger schema validation for topic manifests
+- more polished chat-stream topic status
+
+## Links
+
+- ClawHub: https://clawhub.ai/plugins/openclaw-context-topics
+- Source: https://github.com/hussein1362/openclaw-context-topics
 
 ## License
 
